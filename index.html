@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Суммы и скидки — простой калькулятор</title>
+  <style>
+    :root{--bg:#f7f8fb;--card:#ffffff;--accent:#2463ff;--danger:#ff4d4f;--muted:#6b7280}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:#111}
+    .wrap{max-width:900px;margin:18px auto;padding:16px}
+    .card{background:var(--card);border-radius:12px;padding:16px;box-shadow:0 6px 18px rgba(16,24,40,0.06)}
+    h1{font-size:18px;margin:0 0 12px}
+
+    .form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .form-row{display:flex;gap:8px}
+    label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
+    input[type=number], input[type=text]{width:100%;padding:10px;border-radius:8px;border:1px solid #e6e9ef;font-size:15px}
+    button{padding:10px 12px;border-radius:10px;border:0;background:var(--accent);color:#fff;font-weight:600;cursor:pointer}
+    button.secondary{background:#eef2ff;color:var(--accent);border:1px solid rgba(36,99,255,0.08)}
+    button.danger{background:var(--danger)}
+
+    .controls{display:flex;gap:8px;align-items:end}
+
+    .grid{display:grid;grid-template-columns:1fr 320px;gap:12px;margin-top:12px}
+
+    .history{max-height:360px;overflow:auto;padding:8px;border-radius:8px;border:1px dashed #eef2f7}
+    .entry{display:flex;justify-content:space-between;gap:8px;padding:8px;border-radius:8px;background:#fbfdff;margin-bottom:8px;align-items:center}
+    .entry .meta{display:flex;gap:10px;align-items:center}
+    .badge{padding:6px 8px;border-radius:8px;font-weight:700;font-size:13px}
+    .badge.mul{background:#eef7ff;color:var(--accent)}
+    .badge.div{background:#fff7eb;color:#b45309}
+    .small{font-size:13px;color:var(--muted)}
+
+    .summary{background:linear-gradient(180deg,#ffffff,#fbfdff);padding:12px;border-radius:10px}
+    .row{display:flex;justify-content:space-between;align-items:center;padding:8px 0}
+    .big{font-size:20px;font-weight:700}
+
+    footer.note{margin-top:12px;color:var(--muted);font-size:13px}
+
+    /* responsive */
+    @media (max-width:720px){
+      .form{grid-template-columns:1fr}
+      .grid{grid-template-columns:1fr}
+      .wrap{padding:12px}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Калькулятор сумм и скидки</h1>
+      <div class="form" id="controls">
+        <div>
+          <label for="price">Цена</label>
+          <input id="price" type="number" min="0" step="0.01" placeholder="Например 1000" />
+        </div>
+        <div>
+          <label for="qty">Количество</label>
+          <input id="qty" type="number" min="1" step="1" placeholder="Например 2" />
+        </div>
+        <div style="grid-column:1/3;display:flex;gap:8px;flex-wrap:wrap">
+          <button id="btn-mul">Добавить x (умножение)</button>
+          <button id="btn-div" class="secondary">Добавить / (разделить и суммировать)</button>
+          <button id="btn-clear" class="danger" style="margin-left:auto">Очистить всё</button>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div>
+          <div style="margin-top:12px">
+            <label for="discount">Скидка (%)</label>
+            <div style="display:flex;gap:8px;margin-top:6px">
+              <input id="discount" type="number" min="0" max="100" step="0.1" placeholder="Например 10" />
+              <button id="btn-apply-discount" class="secondary">Применить скидку</button>
+              <button id="btn-reset-discount" class="secondary">Сбросить</button>
+            </div>
+          </div>
+
+          <h3 style="margin-top:12px;margin-bottom:6px">История</h3>
+          <div class="history" id="history"></div>
+        </div>
+
+        <div>
+          <div class="summary">
+            <div class="row"><div class="small">Сумма (без скидки)</div><div id="sum" class="big">0</div></div>
+            <div class="row"><div class="small">Скидка</div><div id="discountAmount" class="small">0</div></div>
+            <div style="height:1px;background:#eef2ff;margin:8px 0;border-radius:2px"></div>
+            <div class="row"><div class="small">Итог (после скидки)</div><div id="total" class="big">0</div></div>
+          </div>
+          <div style="margin-top:12px;text-align:center">
+            <button id="btn-calc">Рассчитать</button>
+          </div>
+        </div>
+      </div>
+
+      <footer class="note">Готово для деплоя на GitHub Pages — просто положите этот файл <code>index.html</code> в корень репозитория и включите Pages.</footer>
+    </div>
+  </div>
+
+  <script>
+    // Класс управления суммами и историей
+    class SumManager {
+      constructor() {
+        this.entries = []; // {id, type, price, qty, value}
+        this.discount = 0; // в процентах
+        this._nextId = 1;
+      }
+
+      // добавляет запись: цена * количество
+      addMultiply(price, qty) {
+        const value = Number(price) * Number(qty);
+        if (!isFinite(value)) throw new Error('Невалидная сумма');
+        this.entries.push({ id: this._nextId++, type: 'mul', price: Number(price), qty: Number(qty), value });
+      }
+
+      // добавляет запись: (цена / количество)
+      addDivideThenSum(price, qty) {
+        if (Number(qty) === 0) throw new Error('Количество не может быть 0');
+        const value = Number(price) / Number(qty);
+        if (!isFinite(value)) throw new Error('Невалидная сумма');
+        this.entries.push({ id: this._nextId++, type: 'div', price: Number(price), qty: Number(qty), value });
+      }
+
+      setDiscount(percent) {
+        this.discount = Number(percent) || 0;
+      }
+
+      remove(id) {
+        this.entries = this.entries.filter(e => e.id !== id);
+      }
+
+      clear() {
+        this.entries = [];
+        this._nextId = 1;
+      }
+
+      getSum() {
+        return this.entries.reduce((s, e) => s + e.value, 0);
+      }
+
+      getDiscountAmount() {
+        return this.getSum() * (this.discount / 100);
+      }
+
+      calculate() {
+        const sum = this.getSum();
+        const discountAmount = this.getDiscountAmount();
+        const total = sum - discountAmount;
+        return { sum, discountAmount, total };
+      }
+    }
+
+    // UI hookup
+    const mgr = new SumManager();
+
+    const el = id => document.getElementById(id);
+    const priceIn = el('price');
+    const qtyIn = el('qty');
+    const btnMul = el('btn-mul');
+    const btnDiv = el('btn-div');
+    const historyEl = el('history');
+    const sumEl = el('sum');
+    const discountIn = el('discount');
+    const discountAmountEl = el('discountAmount');
+    const totalEl = el('total');
+    const btnCalc = el('btn-calc');
+    const btnApplyDiscount = el('btn-apply-discount');
+    const btnResetDiscount = el('btn-reset-discount');
+    const btnClear = el('btn-clear');
+
+    function fmt(n){
+      return Number(n).toLocaleString('ru-RU', {maximumFractionDigits:2,minimumFractionDigits: n % 1 === 0 ? 0 : 2});
+    }
+
+    function renderHistory(){
+      historyEl.innerHTML = '';
+      if (mgr.entries.length === 0) {
+        historyEl.innerHTML = '<div style="padding:12px;color:var(--muted)">История пуста</div>';
+        return;
+      }
+
+      mgr.entries.slice().reverse().forEach(entry => {
+        const div = document.createElement('div');
+        div.className = 'entry';
+        const badge = document.createElement('div');
+        badge.className = 'badge ' + (entry.type === 'mul' ? 'mul' : 'div');
+        badge.textContent = entry.type === 'mul' ? 'x' : '/';
+
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        const p = document.createElement('div');
+        p.innerHTML = `<div style="font-weight:600">${fmt(entry.value)}</div><div class="small">цена ${fmt(entry.price)} • кол-во ${entry.qty}</div>`;
+        meta.appendChild(badge);
+        meta.appendChild(p);
+
+        const right = document.createElement('div');
+        right.style.display = 'flex';
+        right.style.gap = '8px';
+        const del = document.createElement('button');
+        del.textContent = 'Удалить';
+        del.className = 'secondary';
+        del.onclick = () => { mgr.remove(entry.id); renderAll(); };
+        right.appendChild(del);
+
+        div.appendChild(meta);
+        div.appendChild(right);
+        historyEl.appendChild(div);
+      });
+    }
+
+    function renderSummary(){
+      const { sum, discountAmount, total } = mgr.calculate();
+      sumEl.textContent = fmt(sum);
+      discountAmountEl.textContent = fmt(discountAmount);
+      totalEl.textContent = fmt(total);
+    }
+
+    function renderAll(){
+      renderHistory();
+      renderSummary();
+    }
+
+    btnMul.addEventListener('click', () => {
+      const price = Number(priceIn.value);
+      const qty = Number(qtyIn.value);
+      if (!price || price <= 0 || !qty || qty <= 0){ alert('Введите корректную цену и количество'); return }
+      mgr.addMultiply(price, qty);
+      renderAll();
+    });
+
+    btnDiv.addEventListener('click', () => {
+      const price = Number(priceIn.value);
+      const qty = Number(qtyIn.value);
+      if (!price || price <= 0 || !qty || qty <= 0){ alert('Введите корректную цену и количество'); return }
+      mgr.addDivideThenSum(price, qty);
+      renderAll();
+    });
+
+    btnApplyDiscount.addEventListener('click', () => {
+      const p = Number(discountIn.value);
+      if (isNaN(p) || p < 0 || p > 100){ alert('Введите корректный процент (0–100)'); return }
+      mgr.setDiscount(p);
+      renderAll();
+    });
+
+    btnResetDiscount.addEventListener('click', () => {
+      discountIn.value = '';
+      mgr.setDiscount(0);
+      renderAll();
+    });
+
+    btnClear.addEventListener('click', () => {
+      if (!confirm('Очистить все записи?')) return;
+      mgr.clear(); mgr.setDiscount(0);
+      priceIn.value = qtyIn.value = discountIn.value = '';
+      renderAll();
+    });
+
+    btnCalc.addEventListener('click', () => {
+      renderAll();
+      alert('Рассчитано — смотрите правую панель');
+    });
+
+    // Позволяет нажать Enter в полях для быстрого добавления умножения
+    [priceIn, qtyIn].forEach(i => i.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { btnMul.click(); }
+    }));
+
+    // Инициалный рендер
+    renderAll();
+
+    // экспорт в window для отладки
+    window.SumManager = SumManager;
+    window.mgr = mgr;
+  </script>
+</body>
+</html>
