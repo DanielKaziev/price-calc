@@ -17,6 +17,11 @@
     label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
     input[type=number], input[type=text]{width:100%;padding:10px;border-radius:8px;border:1px solid #e6e9ef;font-size:15px}
     button{padding:10px 12px;border-radius:10px;border:0;background:var(--accent);color:#fff;font-weight:600;cursor:pointer}
+    .wide-btn{width:100%;padding:14px 16px;border-radius:12px;font-size:16px;display:block;text-align:center}
+    /* на больших экранах можно оставить ширину контейнера, но кнопки всё равно будут большие */
+    @media (min-width:720px){
+      .wide-btn{font-size:16px}
+    }
     button.secondary{background:#eef2ff;color:var(--accent);border:1px solid rgba(36,99,255,0.08)}
     button.danger{background:var(--danger)}
 
@@ -59,10 +64,10 @@
           <label for="qty">Количество</label>
           <input id="qty" type="number" min="1" step="1" placeholder="Например 2" />
         </div>
-        <div style="grid-column:1/3;display:flex;gap:8px;flex-wrap:wrap">
-          <button id="btn-mul">Добавить x (умножение)</button>
-          <button id="btn-div" class="secondary">Добавить / (разделить и суммировать)</button>
-          <button id="btn-clear" class="danger" style="margin-left:auto">Очистить всё</button>
+        <div style="grid-column:1/3;display:flex;gap:8px;flex-direction:column">
+          <button id="btn-mul" class="wide-btn">Добавить x (умножение)</button>
+          <button id="btn-div" class="secondary wide-btn">Добавить / (разделить и суммировать)</button>
+          <button id="btn-clear" class="danger">Очистить всё</button>
         </div>
       </div>
 
@@ -89,12 +94,11 @@
             <div class="row"><div class="small">Итог (после скидки)</div><div id="total" class="big">0</div></div>
           </div>
           <div style="margin-top:12px;text-align:center">
-            <button id="btn-calc">Рассчитать</button>
+            <button id="btn-calc" class="wide-btn">Рассчитать</button>
           </div>
         </div>
       </div>
 
-      <footer class="note">Готово для деплоя на GitHub Pages — просто положите этот файл <code>index.html</code> в корень репозитория и включите Pages.</footer>
     </div>
   </div>
 
