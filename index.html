@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Суммы и скидки — простой калькулятор</title>
+  <title>Суммы и обслуживание — простой калькулятор</title>
   <style>
-    :root{--bg:#f7f8fb;--card:#ffffff;--accent:#2463ff;--danger:#ff4d4f;--muted:#6b7280}
+    :root{--bg:#f7f8fb;--card:#ffffff;--accent:#5988ff;--danger:#da3c3f;--muted:#6b7280}
     *{box-sizing:border-box}
     body{margin:0;font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:#111}
     .wrap{max-width:900px;margin:18px auto;padding:16px}
@@ -18,7 +18,6 @@
     input[type=number], input[type=text]{width:100%;padding:10px;border-radius:8px;border:1px solid #e6e9ef;font-size:15px}
     button{padding:10px 12px;border-radius:10px;border:0;background:var(--accent);color:#fff;font-weight:600;cursor:pointer}
     .wide-btn{width:100%;padding:14px 16px;border-radius:12px;font-size:16px;display:block;text-align:center}
-    /* на больших экранах можно оставить ширину контейнера, но кнопки всё равно будут большие */
     @media (min-width:720px){
       .wide-btn{font-size:16px}
     }
@@ -43,18 +42,49 @@
 
     footer.note{margin-top:12px;color:var(--muted);font-size:13px}
 
-    /* responsive */
     @media (max-width:720px){
       .form{grid-template-columns:1fr}
       .grid{grid-template-columns:1fr}
       .wrap{padding:12px}
     }
+    .form {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 720px) {
+      .form {
+        grid-template-columns: 1fr 1fr;
+      }
+      .form > div:last-child {
+        grid-column: 1 / -1;
+      }
+    }
+    .icon-btn {
+  background: #5988ff72;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 10px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+.icon-btn:hover {
+  background: rgba(0,0,0,0.06);
+}
+.icon-btn.danger {
+  background: #5988ff72;
+}
+.icon-btn.danger:hover {
+  background: rgba(0,0,0,0.06);
+}
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="card">
-      <h1>Калькулятор сумм и скидки</h1>
+      <h1>Калькулятор сумм и обслуживания</h1>
       <div class="form" id="controls">
         <div>
           <label for="price">Цена</label>
@@ -65,22 +95,28 @@
           <input id="qty" type="number" min="1" step="1" placeholder="Например 2" />
         </div>
         <div style="grid-column:1/3;display:flex;gap:8px;flex-direction:column">
-          <button id="btn-mul" class="wide-btn">Добавить x (умножение)</button>
-          <button id="btn-div" class="secondary wide-btn">Добавить / (разделить и суммировать)</button>
+          <button id="btn-mul" class="wide-btn">Добавить x </button>
+          <button id="btn-div" class="secondary wide-btn">Разделить и суммировать /</button>
           <button id="btn-clear" class="danger">Очистить всё</button>
         </div>
       </div>
 
       <div class="grid">
         <div>
-          <div style="margin-top:12px">
-            <label for="discount">Скидка (%)</label>
-            <div style="display:flex;gap:8px;margin-top:6px">
-              <input id="discount" type="number" min="0" max="100" step="0.1" placeholder="Например 10" />
-              <button id="btn-apply-discount" class="secondary">Применить скидку</button>
-              <button id="btn-reset-discount" class="secondary">Сбросить</button>
-            </div>
-          </div>
+<div style="margin-top:12px">
+  <label for="service">Обслуживание (%)</label>
+  <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
+    <input id="service" type="number" min="0" max="100" step="0.1" placeholder="Например 10" style="flex:1" />
+    <!-- Кнопка применить -->
+    <button id="btn-apply-service" class="icon-btn" title="Применить">
+      ✅
+    </button>
+    <!-- Кнопка сбросить -->
+    <button id="btn-reset-service" class="icon-btn danger" title="Сбросить">
+      ❌
+    </button>
+  </div>
+</div>
 
           <h3 style="margin-top:12px;margin-bottom:6px">История</h3>
           <div class="history" id="history"></div>
@@ -88,10 +124,10 @@
 
         <div>
           <div class="summary">
-            <div class="row"><div class="small">Сумма (без скидки)</div><div id="sum" class="big">0</div></div>
-            <div class="row"><div class="small">Скидка</div><div id="discountAmount" class="small">0</div></div>
+            <div class="row"><div class="small">Сумма (без обслуживания)</div><div id="sum" class="big">0</div></div>
+            <div class="row"><div class="small">Обслуживание</div><div id="serviceAmount" class="small">0</div></div>
             <div style="height:1px;background:#eef2ff;margin:8px 0;border-radius:2px"></div>
-            <div class="row"><div class="small">Итог (после скидки)</div><div id="total" class="big">0</div></div>
+            <div class="row"><div class="small">Итог (с обслуживанием)</div><div id="total" class="big">0</div></div>
           </div>
           <div style="margin-top:12px;text-align:center">
             <button id="btn-calc" class="wide-btn">Рассчитать</button>
@@ -103,22 +139,19 @@
   </div>
 
   <script>
-    // Класс управления суммами и историей
     class SumManager {
       constructor() {
-        this.entries = []; // {id, type, price, qty, value}
-        this.discount = 0; // в процентах
+        this.entries = [];
+        this.service = 0; // проценты
         this._nextId = 1;
       }
 
-      // добавляет запись: цена * количество
       addMultiply(price, qty) {
         const value = Number(price) * Number(qty);
         if (!isFinite(value)) throw new Error('Невалидная сумма');
         this.entries.push({ id: this._nextId++, type: 'mul', price: Number(price), qty: Number(qty), value });
       }
 
-      // добавляет запись: (цена / количество)
       addDivideThenSum(price, qty) {
         if (Number(qty) === 0) throw new Error('Количество не может быть 0');
         const value = Number(price) / Number(qty);
@@ -126,8 +159,8 @@
         this.entries.push({ id: this._nextId++, type: 'div', price: Number(price), qty: Number(qty), value });
       }
 
-      setDiscount(percent) {
-        this.discount = Number(percent) || 0;
+      setService(percent) {
+        this.service = Number(percent) || 0;
       }
 
       remove(id) {
@@ -143,19 +176,18 @@
         return this.entries.reduce((s, e) => s + e.value, 0);
       }
 
-      getDiscountAmount() {
-        return this.getSum() * (this.discount / 100);
+      getServiceAmount() {
+        return this.getSum() * (this.service / 100);
       }
 
       calculate() {
         const sum = this.getSum();
-        const discountAmount = this.getDiscountAmount();
-        const total = sum - discountAmount;
-        return { sum, discountAmount, total };
+        const serviceAmount = this.getServiceAmount();
+        const total = sum + serviceAmount; // ПРИБАВЛЯЕМ
+        return { sum, serviceAmount, total };
       }
     }
 
-    // UI hookup
     const mgr = new SumManager();
 
     const el = id => document.getElementById(id);
@@ -165,12 +197,12 @@
     const btnDiv = el('btn-div');
     const historyEl = el('history');
     const sumEl = el('sum');
-    const discountIn = el('discount');
-    const discountAmountEl = el('discountAmount');
+    const serviceIn = el('service');
+    const serviceAmountEl = el('serviceAmount');
     const totalEl = el('total');
     const btnCalc = el('btn-calc');
-    const btnApplyDiscount = el('btn-apply-discount');
-    const btnResetDiscount = el('btn-reset-discount');
+    const btnApplyService = el('btn-apply-service');
+    const btnResetService = el('btn-reset-service');
     const btnClear = el('btn-clear');
 
     function fmt(n){
@@ -214,9 +246,9 @@
     }
 
     function renderSummary(){
-      const { sum, discountAmount, total } = mgr.calculate();
+      const { sum, serviceAmount, total } = mgr.calculate();
       sumEl.textContent = fmt(sum);
-      discountAmountEl.textContent = fmt(discountAmount);
+      serviceAmountEl.textContent = fmt(serviceAmount);
       totalEl.textContent = fmt(total);
     }
 
@@ -241,23 +273,23 @@
       renderAll();
     });
 
-    btnApplyDiscount.addEventListener('click', () => {
-      const p = Number(discountIn.value);
+    btnApplyService.addEventListener('click', () => {
+      const p = Number(serviceIn.value);
       if (isNaN(p) || p < 0 || p > 100){ alert('Введите корректный процент (0–100)'); return }
-      mgr.setDiscount(p);
+      mgr.setService(p);
       renderAll();
     });
 
-    btnResetDiscount.addEventListener('click', () => {
-      discountIn.value = '';
-      mgr.setDiscount(0);
+    btnResetService.addEventListener('click', () => {
+      serviceIn.value = '';
+      mgr.setService(0);
       renderAll();
     });
 
     btnClear.addEventListener('click', () => {
       if (!confirm('Очистить все записи?')) return;
-      mgr.clear(); mgr.setDiscount(0);
-      priceIn.value = qtyIn.value = discountIn.value = '';
+      mgr.clear(); mgr.setService(0);
+      priceIn.value = qtyIn.value = serviceIn.value = '';
       renderAll();
     });
 
@@ -266,16 +298,11 @@
       alert('Рассчитано — смотрите правую панель');
     });
 
-    // Позволяет нажать Enter в полях для быстрого добавления умножения
     [priceIn, qtyIn].forEach(i => i.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') { btnMul.click(); }
     }));
 
-    // Инициалный рендер
     renderAll();
-
-    // экспорт в window для отладки
-    window.SumManager = SumManager;
     window.mgr = mgr;
   </script>
 </body>
